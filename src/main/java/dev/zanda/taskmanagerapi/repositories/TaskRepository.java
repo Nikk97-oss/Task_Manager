@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface TaskRepository extends JpaRepository<Task, Long> {
-    //CRUD
+    //CRUD Repository
     List<Task> getTaskByTitle(String title);
 
 
