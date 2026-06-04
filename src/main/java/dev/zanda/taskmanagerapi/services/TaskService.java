@@ -3,13 +3,19 @@ package dev.zanda.taskmanagerapi.services;
 import dev.zanda.taskmanagerapi.dto.TaskCreateRequest;
 import dev.zanda.taskmanagerapi.dto.TaskResponse;
 import dev.zanda.taskmanagerapi.dto.TaskUpdateRequest;
+import dev.zanda.taskmanagerapi.exceptions.ResourceNotFoundException;
+import dev.zanda.taskmanagerapi.exceptions.UnauthorizedAccessException;
 import dev.zanda.taskmanagerapi.models.Task;
+import dev.zanda.taskmanagerapi.models.User;
 import dev.zanda.taskmanagerapi.models.enums.Status;
 import dev.zanda.taskmanagerapi.repositories.TaskRepository;
+import dev.zanda.taskmanagerapi.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,22 +28,34 @@ public class TaskService {
 
 
     private final TaskRepository taskRepository;
+    private final UserRepository userRepository;
 
 
     //Constructor injection
-    public TaskService(TaskRepository taskRepository) {
+    public TaskService(TaskRepository taskRepository, UserRepository userRepository) {
         this.taskRepository = taskRepository;
+        this.userRepository = userRepository;
     }
 
-    public Page<TaskResponse> getAllTasks(Pageable pageable) {
-        return taskRepository.findAll(pageable).map(TaskResponse::fromEntity);
 
+    public Page<TaskResponse> getAllTasks(Pageable pageable) {
+        User currentUser= getUser();
+        if (currentUser==null){
+            throw new UnauthorizedAccessException("User Not Found");
+        }
+        return taskRepository.findByUser(currentUser,pageable).map(TaskResponse::fromEntity);
     }
 
     public List<TaskResponse> getTaskByTitle(String title) {
-        List<Task> tasks= taskRepository.getTaskByTitle(title);
+
+        User currentUser= getUser();
+        if (currentUser==null){
+            throw new UnauthorizedAccessException("User Not Found");
+        }
+
+        List<Task> tasks= taskRepository.getTaskByTitle(currentUser,title);
         if(tasks.isEmpty()){
-            throw new RuntimeException("Task Not Found");
+            throw new ResourceNotFoundException("Task Not Found");
         }
         return tasks.stream().map(TaskResponse::fromEntity).toList();
     }
@@ -47,12 +65,16 @@ public class TaskService {
         Task task = new Task(
                 taskCreateRequest.getTitle(),
                 taskCreateRequest.getDescription(),
-                Status.TODO,
                 taskCreateRequest.getPriority(),
-                taskCreateRequest.getDueDate(),
-                null,null //Stesso motivo di status
+                taskCreateRequest.getDueDate()
         );
 
+        User currentUser= getUser();
+        if (currentUser==null){
+            throw new UnauthorizedAccessException("User Not Found");
+        }
+
+        task.setUser(currentUser);
 
 
         Task createdTask = taskRepository.save(task);
@@ -71,8 +93,13 @@ public class TaskService {
 
 
     public TaskResponse updateTask(long id, TaskUpdateRequest taskUpdateRequest) {
-        Task existing =taskRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Task with id " + id + " not found"));
+        User currentUser= getUser();
+        if (currentUser==null){
+            throw new UnauthorizedAccessException("User Not Found");
+        }
+
+        Task existing =taskRepository.findById(id,currentUser)
+                .orElseThrow(() -> new ResourceNotFoundException("Task with id " + id + " not found"));
 
         if(taskUpdateRequest.getTitle() != null)
             existing.setTitle(taskUpdateRequest.getTitle());
@@ -107,10 +134,20 @@ public class TaskService {
 
 
     public void deleteTask(long id) {
-        Task task=taskRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Task Not Found"));
+        User currentUser= getUser();
+        if (currentUser==null){
+            throw new UnauthorizedAccessException("User Not Found");
+        }
+        Task task=taskRepository.findById(id,currentUser)
+                .orElseThrow(() -> new ResourceNotFoundException("Task Not Found"));
         taskRepository.delete(task);
     }
 
+
+    public User getUser(){
+        String userName= ((UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUsername();
+
+        return userRepository.findByUsername(userName);
+    }
 
 }

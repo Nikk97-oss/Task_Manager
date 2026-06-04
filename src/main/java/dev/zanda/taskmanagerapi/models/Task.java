@@ -41,19 +41,20 @@ public class Task {
     @Column(name="updateDate")
     private LocalDateTime updatedDate;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="user_id",nullable=false)
+    private User user;
+
 
     public Task(){
 
     }
 
-    public Task(String title, String description, Status status, Priority priority, LocalDate dueDate,LocalDateTime createdDate, LocalDateTime updatedDate) {
+    public Task(String title, String description, Priority priority, LocalDate dueDate) {
         this.title = title;
         this.description = description;
-        this.status = status;
         this.priority = priority;
         this.dueDate = dueDate;
-        this.createdDate = createdDate;
-        this.updatedDate = updatedDate;
     }
 
     public long getId() {
@@ -120,6 +121,13 @@ public class Task {
         this.updatedDate = updatedDate;
     }
 
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 
     @Override
     public String toString() {

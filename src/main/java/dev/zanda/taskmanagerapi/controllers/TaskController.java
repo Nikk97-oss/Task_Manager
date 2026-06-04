@@ -3,6 +3,7 @@ package dev.zanda.taskmanagerapi.controllers;
 import dev.zanda.taskmanagerapi.dto.TaskCreateRequest;
 import dev.zanda.taskmanagerapi.dto.TaskResponse;
 import dev.zanda.taskmanagerapi.dto.TaskUpdateRequest;
+import dev.zanda.taskmanagerapi.repositories.UserRepository;
 import dev.zanda.taskmanagerapi.services.TaskService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.HashMap;
 import java.util.List;
@@ -41,7 +43,7 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createTask(taskCreateRequest));
     }
 
-    @PutMapping("/delete/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<TaskResponse> updateTask(@PathVariable long id, @Valid @RequestBody TaskUpdateRequest task){
         return ResponseEntity.ok(taskService.updateTask(id, task));
     }
